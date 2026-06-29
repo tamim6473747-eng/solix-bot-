@@ -58,3 +58,74 @@ class DexScreenerAPI:
 
 
 dex_api = DexScreenerAPI()
+async def get_trending(self, limit: int = 10):
+        """
+        Returns the highest-volume pairs from DexScreener boosted tokens.
+        """
+
+        try:
+            data = await self._request("token-boosts/latest/v1")
+
+            if not isinstance(data, list):
+                return []
+
+            filtered = []
+
+            for item in data:
+                try:
+                    address = item.get("tokenAddress")
+
+                    if not address:
+                        continue
+
+                    pairs = await self.token(address)
+
+                    if not pairs:
+                        continue
+
+                    pair = pairs[0]
+
+                    volume = (
+                        pair.get("volume", {}).get("h24", 0)
+                        if pair.get("volume")
+                        else 0
+                    )
+
+                    liquidity = (
+                        pair.get("liquidity", {}).get("usd", 0)
+                        if pair.get("liquidity")
+                        else 0
+                    )
+
+                    filtered.append(
+                        {
+                            "address": address,
+                            "pair": pair,
+                            "volume": volume,
+                            "liquidity": liquidity,
+                        }
+                    )
+
+                except Exception as e:
+                    logger.warning(f"Skipping token: {e}")
+
+            filtered.sort(
+                key=lambda x: (
+                    x["volume"],
+                    x["liquidity"],
+                ),
+                reverse=True,
+            )
+
+            return filtered[:limit]
+
+        except Exception as e:
+            logger.exception(e)
+            return []
+
+    async def health_check(self):
+        try:
+            await self.search("SOL")
+            return True
+        except Exception:
+            return False

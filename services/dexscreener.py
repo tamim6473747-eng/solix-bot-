@@ -60,3 +60,71 @@ class DexScreenerAPI:
             f"/dex/tokens/{token_address}"
         )
         return data.get("pairs", [])
+        async def get_pair(
+        self,
+        chain_id: str,
+        pair_address: str,
+    ) -> dict[str, Any]:
+
+        data = await self._get(
+            f"/dex/pairs/{chain_id}/{pair_address}"
+        )
+
+        pairs = data.get("pairs", [])
+
+        if not pairs:
+            return {}
+
+        return pairs[0]
+
+    async def get_boosted_tokens(self) -> list[dict[str, Any]]:
+        response = await self.client.get(
+            "https://api.dexscreener.com/token-boosts/top/v1"
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        if isinstance(data, list):
+            return data
+
+        return []
+
+    @staticmethod
+    def best_pair(
+        pairs: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+
+        if not pairs:
+            return {}
+
+        return max(
+            pairs,
+            key=lambda pair: pair.get(
+                "liquidity",
+                {},
+            ).get(
+                "usd",
+                0,
+            ),
+        )
+
+    @staticmethod
+    def format_number(value: Any) -> str:
+        try:
+            value = float(value)
+
+            if value >= 1_000_000_000:
+                return f"{value/1_000_000_000:.2f}B"
+
+            if value >= 1_000_000:
+                return f"{value/1_000_000:.2f}M"
+
+            if value >= 1_000:
+                return f"{value/1_000:.2f}K"
+
+            return f"{value:.2f}"
+
+        except Exception:
+            return "N/A"

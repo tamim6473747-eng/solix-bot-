@@ -128,3 +128,38 @@ class DexScreenerAPI:
 
         except Exception:
             return "N/A"
+            async def get_trending(self, limit: int = 10) -> list[dict[str, Any]]:
+        """
+        Returns the top boosted tokens with their best trading pair.
+        """
+
+        boosted = await self.get_boosted_tokens()
+
+        results = []
+
+        for token in boosted:
+            try:
+                address = token.get("tokenAddress")
+
+                if not address:
+                    continue
+
+                pairs = await self.get_token_pairs(address)
+
+                best = self.best_pair(pairs)
+
+                if not best:
+                    continue
+
+                results.append(best)
+
+            except Exception as exc:
+                logger.warning(
+                    "Failed to process boosted token: %s",
+                    exc,
+                )
+
+        return results[:limit]
+
+
+dex_api = DexScreenerAPI()
